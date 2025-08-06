@@ -1,11 +1,9 @@
 console.log("Romeoville Events script is running...");
 
-// CORS-enabled Romeoville RSS feed
 const rssFeedUrl = "https://soft-madeleine-2c2c86.netlify.app/.netlify/functions/cors-proxy/https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
 
-// Number of events per page and page duration
 const EVENTS_PER_PAGE = 10;
-const PAGE_DURATION = 20000; // 20 seconds
+const PAGE_DURATION = 20000;
 
 async function fetchAndDisplayEvents() {
   try {
@@ -17,7 +15,7 @@ async function fetchAndDisplayEvents() {
 
     const allEvents = [];
 
-    items.forEach((item, index) => {
+    items.forEach((item) => {
       const title = item.querySelector("title")?.textContent?.trim() || "No Title";
       const description = item.querySelector("description")?.textContent || "";
       const link = item.querySelector("link")?.textContent?.trim() || "";
@@ -104,15 +102,13 @@ async function fetchAndDisplayEvents() {
   }
 }
 
-// Refresh every hour
 fetchAndDisplayEvents();
-setInterval(fetchAndDisplayEvents, 60 * 60 * 1000); // 1 hour
+setInterval(fetchAndDisplayEvents, 60 * 60 * 1000);
 
-// Hard refresh at midnight
 function scheduleMidnightReload() {
   const now = new Date();
   const midnight = new Date();
-  midnight.setHours(24, 0, 5, 0); // 5 seconds after midnight
+  midnight.setHours(24, 0, 5, 0);
   const timeout = midnight - now;
   setTimeout(() => location.reload(true), timeout);
 }
