@@ -1,95 +1,94 @@
 console.log("Romeoville Events script is running...");
 
+// Set your CORS proxy and target RSS feed URL
 const proxyUrl = "https://bucolic-madeleine-a56597.netlify.app";
 const targetUrl = "https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
-const rssUrl = `${proxyUrl}/${targetUrl}`;
+const fullUrl = `${proxyUrl}/${targetUrl}`;
 
-async function fetchAndDisplayEvents() {
-  try {
-    const response = await fetch(fullUrl);
-    const text = await response.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, "text/xml");
-    const items = xml.querySelectorAll("item");
-    const events = [];
+// Helper to parse event description HTML
+function parseDescription(summary) {
+    const result = {
+        dateText: "Date TBD",
+        time: "Time TBD",
+        location: "Location TBD"
+    };
 
-    items.forEach((item, index) => {
-      const title = item.querySelector("title")?.textContent.trim() ?? "";
-      const descriptionHTML = item.querySelector("description")?.textContent ?? "";
-      console.log(`DEBUG description [${index}]:`, descriptionHTML);
-      const tempDoc = new DOMParser().parseFromString(descriptionHTML, "text/html");
-      const rawText = tempDoc.body.textContent.replace(/\s+/g, " ").trim();
+    const dateMatch = summary.match(/Event date(?:s)?:<\/strong>\s*([^<]+)/i);
+    const timeMatch = summary.match(/Event Time:<\/strong>\s*([^<]+)/i);
+    const locationMatch = summary.match(/Location:<\/strong>\s*<br>\s*([^<]+)<br>\s*([^<]+)/i);
 
-      // Parse date(s)
-      let startDate = null;
-      let endDate = null;
-      let dateText = "Date TBD";
+    if (dateMatch) result.dateText = dateMatch[1].trim();
+    if (timeMatch) result.time = timeMatch[1].trim();
+    if (locationMatch) result.location = `${locationMatch[1].trim()}, ${locationMatch[2].trim()}`;
 
-      const rangeMatch = rawText.match(/Event dates?: ([A-Za-z]+\s+\d{1,2},\s+\d{4}) - ([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
-      const singleDateMatch = rawText.match(/Event date: ([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
-
-      if (rangeMatch) {
-        startDate = new Date(rangeMatch[1]);
-        endDate = new Date(rangeMatch[2] + " 23:59");
-        dateText = `${rangeMatch[1]} – ${rangeMatch[2]}`;
-      } else if (singleDateMatch) {
-        startDate = new Date(singleDateMatch[1]);
-        endDate = null;
-        dateText = singleDateMatch[1];
-      }
-
-      // Time
-      const timeMatch = rawText.match(/Event Time: ([0-9:AMP\- ]+)/i);
-      const time = timeMatch ? timeMatch[1].trim() : "Time TBD";
-
-      // Location
-      const locationMatch = rawText.match(/Location: ([^<]+?)Romeoville/i);
-      const location = locationMatch ? locationMatch[1].trim() : "Location TBD";
-
-      events.push({
-        title,
-        startDate,
-        endDate,
-        dateText,
-        time,
-        location
-      });
-    });
-
-    console.log("Raw parsed events: ", events);
-
-    const now = new Date();
-    const upcomingEvents = events.filter(event => {
-      if (!event.startDate) return false;
-      return event.endDate ? event.endDate >= now : event.startDate >= now;
-    });
-
-    console.log("Filtered upcoming events: ", upcomingEvents);
-
-    const container = document.getElementById("event-list");
-    if (!container) return;
-
-    if (upcomingEvents.length === 0) {
-      container.innerHTML = "<div class='event'><p>No upcoming events found.</p></div>";
-      return;
+    // Try to extract start and end date from "August 4, 2025 - August 10, 2025"
+    const dateRange = result.dateText.match(/([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4})/);
+    if (dateRange) {
+        result.startDate = new Date(dateRange[1]);
+        result.endDate = new Date(dateRange[2]);
+    } else {
+        const singleDate = result.dateText.match(/([A-Za-z]+ \d{1,2}, \d{4})/);
+        if (singleDate) {
+            result.startDate = new Date(singleDate[1]);
+            result.endDate = new Date(singleDate[1]);
+        }
     }
 
-    // Render first 10 events (paging comes later)
-    container.innerHTML = "";
-    upcomingEvents.slice(0, 10).forEach(event => {
-      const el = document.createElement("div");
-      el.className = "event";
-      el.innerHTML = `
-        <div class="title">${event.title}</div>
-        <div class="datetime">${event.dateText} – ${event.time}</div>
-        <div class="location">${event.location}</div>
-      `;
-      container.appendChild(el);
-    });
-
-  } catch (error) {
-    console.error("Error loading events:", error);
-  }
+    return result;
 }
 
+// Fetch and display events
+async function fetchAndDisplayEvents() {
+    try {
+        const res = await fetch(fullUrl);
+        const xmlText = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, "application/xml");
+        const items = xml.querySelectorAll("item");
+
+        const events = [];
+        items.forEach((item, index) => {
+            const title = item.querySelector("title")?.textContent || "Untitled";
+            const description = item.querySelector("description")?.textContent || "";
+            const link = item.querySelector("link")?.textContent || "#";
+
+            const parsed = parseDescription(description);
+            const event = {
+                title,
+                ...parsed,
+                link
+            };
+
+            events.push(event);
+        });
+
+        console.log("Raw parsed events: ", events);
+
+        const today = new Date();
+        const upcoming = events.filter(e => e.startDate && e.startDate >= today);
+        console.log("Filtered upcoming events: ", upcoming);
+
+        const container = document.getElementById("event-container");
+        if (!container) return;
+
+        if (upcoming.length === 0) {
+            container.innerHTML = "<p>No upcoming events found.</p>";
+            return;
+        }
+
+        container.innerHTML = upcoming.map(e => `
+            <div class="event">
+                <h3>${e.title}</h3>
+                <p><strong>Date:</strong> ${e.dateText}</p>
+                <p><strong>Time:</strong> ${e.time}</p>
+                <p><strong>Location:</strong> ${e.location}</p>
+            </div>
+        `).join("");
+
+    } catch (err) {
+        console.error("Error loading events:", err);
+    }
+}
+
+// Run on load
 fetchAndDisplayEvents();
