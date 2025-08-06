@@ -1,94 +1,119 @@
 console.log("Romeoville Events script is running...");
 
-const proxyUrl = "https://bucolic-madeleine-a56597.netlify.app/.netlify/functions/cors-proxy";
-const targetUrl = "https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
-const fullUrl = `${proxyUrl}/${targetUrl}`;
+// CORS-enabled Romeoville RSS feed
+const rssFeedUrl = "https://soft-madeleine-2c2c86.netlify.app/.netlify/functions/cors-proxy/https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
 
+// Number of events per page and page duration
+const EVENTS_PER_PAGE = 10;
+const PAGE_DURATION = 20000; // 20 seconds
 
-// Helper to parse event description HTML
-function parseDescription(summary) {
-    const result = {
-        dateText: "Date TBD",
-        time: "Time TBD",
-        location: "Location TBD"
-    };
-
-    const dateMatch = summary.match(/Event date(?:s)?:<\/strong>\s*([^<]+)/i);
-    const timeMatch = summary.match(/Event Time:<\/strong>\s*([^<]+)/i);
-    const locationMatch = summary.match(/Location:<\/strong>\s*<br>\s*([^<]+)<br>\s*([^<]+)/i);
-
-    if (dateMatch) result.dateText = dateMatch[1].trim();
-    if (timeMatch) result.time = timeMatch[1].trim();
-    if (locationMatch) result.location = `${locationMatch[1].trim()}, ${locationMatch[2].trim()}`;
-
-    // Try to extract start and end date from "August 4, 2025 - August 10, 2025"
-    const dateRange = result.dateText.match(/([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4})/);
-    if (dateRange) {
-        result.startDate = new Date(dateRange[1]);
-        result.endDate = new Date(dateRange[2]);
-    } else {
-        const singleDate = result.dateText.match(/([A-Za-z]+ \d{1,2}, \d{4})/);
-        if (singleDate) {
-            result.startDate = new Date(singleDate[1]);
-            result.endDate = new Date(singleDate[1]);
-        }
-    }
-
-    return result;
-}
-
-// Fetch and display events
 async function fetchAndDisplayEvents() {
-    try {
-        const res = await fetch(fullUrl);
-        const xmlText = await res.text();
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlText, "application/xml");
-        const items = xml.querySelectorAll("item");
+  try {
+    const response = await fetch(rssFeedUrl);
+    const text = await response.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, "text/xml");
+    const items = xml.querySelectorAll("item");
 
-        const events = [];
-        items.forEach((item, index) => {
-            const title = item.querySelector("title")?.textContent || "Untitled";
-            const description = item.querySelector("description")?.textContent || "";
-            const link = item.querySelector("link")?.textContent || "#";
+    const allEvents = [];
 
-            const parsed = parseDescription(description);
-            const event = {
-                title,
-                ...parsed,
-                link
-            };
+    items.forEach((item, index) => {
+      const title = item.querySelector("title")?.textContent?.trim() || "No Title";
+      const description = item.querySelector("description")?.textContent || "";
+      const link = item.querySelector("link")?.textContent?.trim() || "";
 
-            events.push(event);
-        });
+      const summaryText = description.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 
-        console.log("Raw parsed events: ", events);
+      const dateMatch = summaryText.match(/Event date[s]*:\s*(.+?)\s*(?=Event Time|Location|$)/i);
+      const timeMatch = summaryText.match(/Event Time:\s*(.+?)(?=Location|$)/i);
+      const locationMatch = summaryText.match(/Location:\s*(.+)$/i);
 
-        const today = new Date();
-        const upcoming = events.filter(e => e.startDate && e.startDate >= today);
-        console.log("Filtered upcoming events: ", upcoming);
+      let startDate = null;
+      let endDate = null;
 
-        const container = document.getElementById("event-container");
-        if (!container) return;
-
-        if (upcoming.length === 0) {
-            container.innerHTML = "<p>No upcoming events found.</p>";
-            return;
+      if (dateMatch) {
+        const rawDate = dateMatch[1].trim();
+        if (rawDate.includes("-")) {
+          const [startRaw, endRaw] = rawDate.split("-").map(d => d.trim());
+          startDate = new Date(startRaw + " 00:00");
+          endDate = new Date(endRaw + " 23:59");
+        } else {
+          startDate = new Date(rawDate + " 00:00");
+          endDate = new Date(rawDate + " 23:59");
         }
+      }
 
-        container.innerHTML = upcoming.map(e => `
-            <div class="event">
-                <h3>${e.title}</h3>
-                <p><strong>Date:</strong> ${e.dateText}</p>
-                <p><strong>Time:</strong> ${e.time}</p>
-                <p><strong>Location:</strong> ${e.location}</p>
-            </div>
-        `).join("");
+      if (startDate && endDate) {
+        allEvents.push({
+          title,
+          dateText: dateMatch ? dateMatch[1].trim() : "Date TBD",
+          time: timeMatch ? timeMatch[1].trim() : "Time TBD",
+          location: locationMatch ? locationMatch[1].replace(/Romeoville, IL ?60446/i, "").trim() : "",
+          startDate,
+          endDate,
+          link,
+        });
+      }
+    });
 
-    } catch (err) {
-        console.error("Error loading events:", err);
+    console.log("Raw parsed events: ", allEvents);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcomingEvents = allEvents.filter(event => event.endDate >= today);
+    upcomingEvents.sort((a, b) => a.startDate - b.startDate);
+
+    console.log("Filtered upcoming events: ", upcomingEvents);
+
+    const container = document.getElementById("event-container");
+    if (!container) throw new Error("Missing container");
+
+    if (upcomingEvents.length === 0) {
+      container.innerHTML = `<div class="event-page"><p class="no-events">No upcoming events found.</p></div>`;
+      return;
     }
+
+    const pages = [];
+    for (let i = 0; i < upcomingEvents.length; i += EVENTS_PER_PAGE) {
+      const pageEvents = upcomingEvents.slice(i, i + EVENTS_PER_PAGE);
+      const pageHTML = pageEvents.map(event => `
+        <div class="event">
+          <div class="event-title">${event.title}</div>
+          <div class="event-details">${event.dateText} &bull; ${event.time}<br>${event.location}</div>
+        </div>
+      `).join("");
+
+      pages.push(`<div class="event-page">${pageHTML}</div>`);
+    }
+
+    let currentPage = 0;
+    container.innerHTML = pages[currentPage];
+
+    setInterval(() => {
+      currentPage = (currentPage + 1) % pages.length;
+      container.style.opacity = 0;
+      setTimeout(() => {
+        container.innerHTML = pages[currentPage];
+        container.style.opacity = 1;
+      }, 500);
+    }, PAGE_DURATION);
+
+  } catch (error) {
+    console.error("Error loading events:", error);
+  }
 }
 
-// Run on load
+// Refresh every hour
 fetchAndDisplayEvents();
+setInterval(fetchAndDisplayEvents, 60 * 60 * 1000); // 1 hour
+
+// Hard refresh at midnight
+function scheduleMidnightReload() {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 5, 0); // 5 seconds after midnight
+  const timeout = midnight - now;
+  setTimeout(() => location.reload(true), timeout);
+}
+scheduleMidnightReload();
