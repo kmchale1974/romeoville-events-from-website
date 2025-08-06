@@ -1,6 +1,7 @@
 console.log("Romeoville Events script is running...");
 
-const FEED_URL = 'https://corsproxy.io/?https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml';
+const FEED_URL = 'https://api.allorigins.win/raw?url=https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml';
+
 const EVENTS_PER_PAGE = 10;
 let currentPage = 0;
 let pages = [];
