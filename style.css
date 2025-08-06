@@ -1,0 +1,34 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #f0f0f0;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+#event-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  font-size: 24px;
+}
+.page {
+  display: none;
+  animation: fadein 1s;
+}
+.page.active {
+  display: block;
+}
+@keyframes fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.event {
+  margin-bottom: 20px;
+}
+.event-title {
+  font-weight: bold;
+}
