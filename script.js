@@ -7,6 +7,7 @@ let currentPageIndex = 0;
 let pages = [];
 
 async function fetchEvents() {
+  console.log("SUMMARY:", summary);
   try {
     const response = await fetch(RSS_URL);
     if (!response.ok) throw new Error("Network response was not ok");
