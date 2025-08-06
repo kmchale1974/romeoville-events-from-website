@@ -5,11 +5,43 @@
   <meta name="viewport" content="width=616, height=960, initial-scale=1.0" />
   <title>Romeoville Events</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f8f8f8;
+      color: #222;
+      width: 616px;
+      height: 960px;
+      overflow: hidden;
+    }
+    #event-container {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .event {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    .event h3 {
+      font-size: 1.2em;
+      margin: 0 0 8px;
+    }
+    .event p {
+      margin: 4px 0;
+      font-size: 0.95em;
+    }
+  </style>
 </head>
 <body>
-  <div id="events">Loading events...</div>
+  <div id="event-container">
+    <p>Loading events...</p>
+  </div>
 
-  <!-- Make sure the script is loaded after the #events div -->
   <script src="script.js"></script>
 </body>
 </html>
