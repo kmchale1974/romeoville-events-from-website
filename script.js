@@ -24,6 +24,7 @@ async function fetchEvents() {
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = rawSummary;
       const summary = tempDiv.innerText;
+      if (index < 3) console.log("SUMMARY", index + 1, ":", summary);
 
       const dateMatch = summary.match(/Event date(?:s)?:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})(?:\s*-\s*([A-Za-z]+\s+\d{1,2},\s*\d{4}))?/i);
       const timeMatch = summary.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
