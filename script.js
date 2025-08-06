@@ -13,34 +13,37 @@ async function fetchAndDisplayEvents() {
     const items = xml.querySelectorAll("item");
     const events = [];
 
-    items.forEach(item => {
+    items.forEach((item, index) => {
       const title = item.querySelector("title")?.textContent.trim() ?? "";
       const descriptionHTML = item.querySelector("description")?.textContent ?? "";
-      const descDoc = new DOMParser().parseFromString(descriptionHTML, "text/html");
-      const html = descDoc.body.innerHTML;
+      const tempDoc = new DOMParser().parseFromString(descriptionHTML, "text/html");
+      const rawText = tempDoc.body.textContent.replace(/\s+/g, " ").trim();
 
-      // Extract dates
-      const dateRangeMatch = html.match(/Event dates:<\/strong>\s*([^<]+)\s*-\s*([^<]+)/i);
-      const singleDateMatch = html.match(/Event date:<\/strong>\s*([^<]+)/i);
-      const timeMatch = html.match(/Event Time:<\/strong>\s*([^<]+)/i);
-      const locationMatch = html.match(/Location:<\/strong>\s*<br>\s*([^<]+)<br>/i);
-
-      let dateText = "Date TBD";
-      let time = timeMatch?.[1]?.trim() ?? "Time TBD";
-      let location = locationMatch?.[1]?.replace(/Romeoville, IL.*/i, "").trim() ?? "Location TBD";
+      // Parse date(s)
       let startDate = null;
       let endDate = null;
+      let dateText = "Date TBD";
 
-      if (dateRangeMatch) {
-        const [_, startStr, endStr] = dateRangeMatch;
-        startDate = new Date(startStr + " 00:00");
-        endDate = new Date(endStr + " 23:59");
-        dateText = `${startStr} – ${endStr}`;
+      const rangeMatch = rawText.match(/Event dates?: ([A-Za-z]+\s+\d{1,2},\s+\d{4}) - ([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+      const singleDateMatch = rawText.match(/Event date: ([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+
+      if (rangeMatch) {
+        startDate = new Date(rangeMatch[1]);
+        endDate = new Date(rangeMatch[2] + " 23:59");
+        dateText = `${rangeMatch[1]} – ${rangeMatch[2]}`;
       } else if (singleDateMatch) {
-        const startStr = singleDateMatch[1];
-        startDate = new Date(startStr + " 00:00");
-        dateText = startStr;
+        startDate = new Date(singleDateMatch[1]);
+        endDate = null;
+        dateText = singleDateMatch[1];
       }
+
+      // Time
+      const timeMatch = rawText.match(/Event Time: ([0-9:AMP\- ]+)/i);
+      const time = timeMatch ? timeMatch[1].trim() : "Time TBD";
+
+      // Location
+      const locationMatch = rawText.match(/Location: ([^<]+?)Romeoville/i);
+      const location = locationMatch ? locationMatch[1].trim() : "Location TBD";
 
       events.push({
         title,
@@ -70,14 +73,14 @@ async function fetchAndDisplayEvents() {
       return;
     }
 
-    // Render first 10 events
+    // Render first 10 events (paging comes later)
     container.innerHTML = "";
     upcomingEvents.slice(0, 10).forEach(event => {
       const el = document.createElement("div");
       el.className = "event";
       el.innerHTML = `
         <div class="title">${event.title}</div>
-        <div class="datetime">${event.dateText} &nbsp; ${event.time}</div>
+        <div class="datetime">${event.dateText} – ${event.time}</div>
         <div class="location">${event.location}</div>
       `;
       container.appendChild(el);
