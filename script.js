@@ -1,12 +1,12 @@
 
-console.log("Romeoville Events script is running...");
-
 const RSS_URL = "https://corsproxy.io/?" + encodeURIComponent("https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml");
 const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour
 const PAGE_DURATION = 20000; // 20 seconds
 const MAX_PAGES = 4;
 let currentPageIndex = 0;
 let pages = [];
+
+console.log("Romeoville Events script is running...");
 
 async function fetchEvents() {
   try {
