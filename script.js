@@ -16,6 +16,7 @@ async function fetchAndDisplayEvents() {
     items.forEach((item, index) => {
       const title = item.querySelector("title")?.textContent.trim() ?? "";
       const descriptionHTML = item.querySelector("description")?.textContent ?? "";
+      console.log(`DEBUG description [${index}]:`, descriptionHTML);
       const tempDoc = new DOMParser().parseFromString(descriptionHTML, "text/html");
       const rawText = tempDoc.body.textContent.replace(/\s+/g, " ").trim();
 
