@@ -1,32 +1,46 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #fff;
   font-family: Arial, sans-serif;
-  color: #222;
+  width: 616px;
+  height: 960px;
+  background-color: #f9f9f9;
+  overflow: hidden;
 }
 
-#events {
-  padding: 20px;
-  font-size: 1.1em;
-  line-height: 1.4em;
-  max-width: 100%;
+#event-container {
+  width: 100%;
   height: 100%;
-  overflow-y: auto;
+  padding: 20px;
   box-sizing: border-box;
+  transition: opacity 0.5s ease;
+}
+
+.event-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .event {
-  margin-bottom: 20px;
   border-bottom: 1px solid #ccc;
   padding-bottom: 10px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.event-title {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #003366;
 }
 
-.event {
-  animation: fadeIn 0.5s ease-in;
+.event-details {
+  font-size: 1em;
+  color: #444;
+}
+
+.no-events {
+  font-size: 1.2em;
+  text-align: center;
+  margin-top: 40%;
+  color: #999;
 }
