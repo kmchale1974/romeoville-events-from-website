@@ -16,33 +16,47 @@ async function fetchAndDisplayEvents() {
     items.forEach(item => {
       const title = item.querySelector("title")?.textContent.trim() ?? "";
       const descriptionHTML = item.querySelector("description")?.textContent ?? "";
-      const description = new DOMParser().parseFromString(descriptionHTML, "text/html").body.textContent;
+      const descDoc = new DOMParser().parseFromString(descriptionHTML, "text/html");
+      const lines = descDoc.body.innerText.split("\n").map(l => l.trim()).filter(Boolean);
 
-      // Match either "Event date:" or "Event dates:"
-      const dateMatch = description.match(/Event date[s]*:\s*(.*?)\s*(?=Event Time:)/i);
-      const timeMatch = description.match(/Event Time:\s*(.*?)\s*(?=Location:)/i);
-      const locationMatch = description.match(/Location:\s*(.*?)Romeoville, IL/i);
-
-      const dateText = dateMatch?.[1]?.trim() ?? "";
-      const time = timeMatch?.[1]?.trim() ?? "Time TBD";
-      const location = locationMatch?.[1]?.replace(/<br>/g, "").trim() ?? "Location TBD";
-
+      let dateText = "Date TBD";
+      let time = "Time TBD";
+      let location = "Location TBD";
       let startDate = null;
       let endDate = null;
 
-      if (dateText.includes(" - ")) {
-        const [startStr, endStr] = dateText.split(" - ");
-        startDate = new Date(startStr + " 00:00:00");
-        endDate = new Date(endStr + " 23:59:59");
-      } else if (dateText) {
-        startDate = new Date(dateText + " 00:00:00");
-      }
+      lines.forEach(line => {
+        if (line.startsWith("Event date:")) {
+          const match = line.match(/Event date:\s*(.+)/i);
+          if (match) {
+            dateText = match[1];
+            const parsed = new Date(match[1] + " 00:00");
+            if (!isNaN(parsed)) startDate = parsed;
+          }
+        } else if (line.startsWith("Event dates:")) {
+          const match = line.match(/Event dates:\s*(.+)\s*-\s*(.+)/i);
+          if (match) {
+            const start = new Date(match[1] + " 00:00");
+            const end = new Date(match[2] + " 23:59");
+            if (!isNaN(start)) startDate = start;
+            if (!isNaN(end)) endDate = end;
+            dateText = `${match[1]} – ${match[2]}`;
+          }
+        } else if (line.startsWith("Event Time:")) {
+          const match = line.match(/Event Time:\s*(.+)/i);
+          if (match) time = match[1];
+        } else if (line.startsWith("Location:")) {
+          // Next line(s) usually contain the address
+          const locIndex = lines.indexOf(line);
+          location = lines[locIndex + 1]?.replace(/Romeoville, IL.*/i, "").trim() ?? "";
+        }
+      });
 
       events.push({
         title,
         startDate,
         endDate,
-        dateText: dateText || "Date TBD",
+        dateText,
         time,
         location
       });
@@ -52,7 +66,8 @@ async function fetchAndDisplayEvents() {
 
     const now = new Date();
     const upcomingEvents = events.filter(event => {
-      return event.startDate && event.startDate >= now;
+      if (!event.startDate) return false;
+      return event.endDate ? event.endDate >= now : event.startDate >= now;
     });
 
     console.log("Filtered upcoming events: ", upcomingEvents);
@@ -65,7 +80,7 @@ async function fetchAndDisplayEvents() {
       return;
     }
 
-    // Render first page of results
+    // Render first page (limit 10)
     container.innerHTML = "";
     upcomingEvents.slice(0, 10).forEach(event => {
       const el = document.createElement("div");
