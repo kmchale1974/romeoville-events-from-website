@@ -17,40 +17,30 @@ async function fetchAndDisplayEvents() {
       const title = item.querySelector("title")?.textContent.trim() ?? "";
       const descriptionHTML = item.querySelector("description")?.textContent ?? "";
       const descDoc = new DOMParser().parseFromString(descriptionHTML, "text/html");
-      const lines = descDoc.body.innerText.split("\n").map(l => l.trim()).filter(Boolean);
+      const html = descDoc.body.innerHTML;
+
+      // Extract dates
+      const dateRangeMatch = html.match(/Event dates:<\/strong>\s*([^<]+)\s*-\s*([^<]+)/i);
+      const singleDateMatch = html.match(/Event date:<\/strong>\s*([^<]+)/i);
+      const timeMatch = html.match(/Event Time:<\/strong>\s*([^<]+)/i);
+      const locationMatch = html.match(/Location:<\/strong>\s*<br>\s*([^<]+)<br>/i);
 
       let dateText = "Date TBD";
-      let time = "Time TBD";
-      let location = "Location TBD";
+      let time = timeMatch?.[1]?.trim() ?? "Time TBD";
+      let location = locationMatch?.[1]?.replace(/Romeoville, IL.*/i, "").trim() ?? "Location TBD";
       let startDate = null;
       let endDate = null;
 
-      lines.forEach(line => {
-        if (line.startsWith("Event date:")) {
-          const match = line.match(/Event date:\s*(.+)/i);
-          if (match) {
-            dateText = match[1];
-            const parsed = new Date(match[1] + " 00:00");
-            if (!isNaN(parsed)) startDate = parsed;
-          }
-        } else if (line.startsWith("Event dates:")) {
-          const match = line.match(/Event dates:\s*(.+)\s*-\s*(.+)/i);
-          if (match) {
-            const start = new Date(match[1] + " 00:00");
-            const end = new Date(match[2] + " 23:59");
-            if (!isNaN(start)) startDate = start;
-            if (!isNaN(end)) endDate = end;
-            dateText = `${match[1]} – ${match[2]}`;
-          }
-        } else if (line.startsWith("Event Time:")) {
-          const match = line.match(/Event Time:\s*(.+)/i);
-          if (match) time = match[1];
-        } else if (line.startsWith("Location:")) {
-          // Next line(s) usually contain the address
-          const locIndex = lines.indexOf(line);
-          location = lines[locIndex + 1]?.replace(/Romeoville, IL.*/i, "").trim() ?? "";
-        }
-      });
+      if (dateRangeMatch) {
+        const [_, startStr, endStr] = dateRangeMatch;
+        startDate = new Date(startStr + " 00:00");
+        endDate = new Date(endStr + " 23:59");
+        dateText = `${startStr} – ${endStr}`;
+      } else if (singleDateMatch) {
+        const startStr = singleDateMatch[1];
+        startDate = new Date(startStr + " 00:00");
+        dateText = startStr;
+      }
 
       events.push({
         title,
@@ -80,7 +70,7 @@ async function fetchAndDisplayEvents() {
       return;
     }
 
-    // Render first page (limit 10)
+    // Render first 10 events
     container.innerHTML = "";
     upcomingEvents.slice(0, 10).forEach(event => {
       const el = document.createElement("div");
