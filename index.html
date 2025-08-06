@@ -2,22 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=616, height=960, initial-scale=1.0" />
   <title>Romeoville Events</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="events">
-    Loading events...
-  </div>
+  <div id="events">Loading events...</div>
 
-    <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const script = document.createElement("script");
-      script.src = "script.js";
-      document.body.appendChild(script);
-    });
-  </script>
+  <!-- Make sure the script is loaded after the #events div -->
+  <script src="script.js"></script>
 </body>
-
 </html>
