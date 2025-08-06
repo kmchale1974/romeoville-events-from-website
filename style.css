@@ -1,34 +1,32 @@
 body {
   margin: 0;
   padding: 0;
-  background: #f0f0f0;
+  background-color: #fff;
   font-family: Arial, sans-serif;
-  overflow: hidden;
+  color: #222;
 }
-#event-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+
+#events {
   padding: 20px;
+  font-size: 1.1em;
+  line-height: 1.4em;
+  max-width: 100%;
+  height: 100%;
+  overflow-y: auto;
   box-sizing: border-box;
-  font-size: 24px;
 }
-.page {
-  display: none;
-  animation: fadein 1s;
-}
-.page.active {
-  display: block;
-}
-@keyframes fadein {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+
 .event {
   margin-bottom: 20px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 10px;
 }
-.event-title {
-  font-weight: bold;
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.event {
+  animation: fadeIn 0.5s ease-in;
 }
