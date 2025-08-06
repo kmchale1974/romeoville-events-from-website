@@ -18,15 +18,23 @@ async function fetchEvents() {
     let events = items.map(item => {
       const title = item.querySelector("title")?.textContent.trim() || "Untitled Event";
       const summary = item.querySelector("summary")?.textContent || item.querySelector("description")?.textContent || "";
-      const dateMatch = summary.match(/Event date:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})/i);
+
+      // Match either "Event date:" or "Event dates:" (range)
+      const dateMatch = summary.match(/Event date(?:s)?:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})(?:\s*-\s*([A-Za-z]+\s+\d{1,2},\s*\d{4}))?/i);
       const timeMatch = summary.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
-      const locationMatch = summary.match(/Location:\s*([^<]+)/i);
-      let date = dateMatch ? new Date(dateMatch[1]) : null;
+      const locationMatch = summary.match(/Location:\s*<br>(.*?)<br>/i);
+
+      let startDate = dateMatch ? new Date(dateMatch[1]) : null;
+      let displayDate = dateMatch
+        ? dateMatch[2]
+          ? dateMatch[1] + " - " + dateMatch[2]
+          : dateMatch[1]
+        : "Date TBD";
 
       return {
         title,
-        date,
-        dateText: dateMatch ? dateMatch[1] : "Date TBD",
+        date: startDate,
+        dateText: displayDate,
         time: timeMatch ? timeMatch[1] : "Time TBD",
         location: locationMatch ? locationMatch[1].replace(/,?\s*Romeoville.*$/i, "").trim() : "Location TBD"
       };
