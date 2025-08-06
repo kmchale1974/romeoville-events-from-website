@@ -19,12 +19,12 @@ async function fetchEvents() {
       const title = item.querySelector("title")?.textContent.trim() || "Untitled Event";
       const summary = item.querySelector("summary")?.textContent || item.querySelector("description")?.textContent || "";
 
-      // Match either "Event date:" or "Event dates:" (range)
       const dateMatch = summary.match(/Event date(?:s)?:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})(?:\s*-\s*([A-Za-z]+\s+\d{1,2},\s*\d{4}))?/i);
       const timeMatch = summary.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
       const locationMatch = summary.match(/Location:\s*<br>(.*?)<br>/i);
 
       let startDate = dateMatch ? new Date(dateMatch[1]) : null;
+      let endDate = dateMatch?.[2] ? new Date(dateMatch[2]) : startDate;
       let displayDate = dateMatch
         ? dateMatch[2]
           ? dateMatch[1] + " - " + dateMatch[2]
@@ -33,16 +33,18 @@ async function fetchEvents() {
 
       return {
         title,
-        date: startDate,
+        startDate,
+        endDate,
         dateText: displayDate,
         time: timeMatch ? timeMatch[1] : "Time TBD",
         location: locationMatch ? locationMatch[1].replace(/,?\s*Romeoville.*$/i, "").trim() : "Location TBD"
       };
     });
 
-    const now = new Date();
-    events = events.filter(e => e.date && e.date >= now);
-    events.sort((a, b) => a.date - b.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Ignore time, only compare date
+    events = events.filter(e => e.startDate && e.endDate && e.endDate >= today);
+    events.sort((a, b) => a.startDate - b.startDate);
 
     renderEvents(events);
   } catch (error) {
@@ -95,7 +97,9 @@ function showNextPage() {
 function scheduleMidnightReload() {
   const now = new Date();
   const msToMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0) - now;
-  setTimeout(() => location.reload(true), msToMidnight);
+  setTimeout(() => {
+    location.href = location.href.split("?")[0] + "?t=" + new Date().getTime();
+  }, msToMidnight);
 }
 
 fetchEvents();
