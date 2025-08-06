@@ -1,6 +1,6 @@
 console.log("Romeoville Events script is running...");
 
-const rssFeedUrl = "https://soft-madeleine-2c2c86.netlify.app/.netlify/functions/cors-proxy/https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
+const jsonFeedUrl = "https://kmchale1974.github.io/romeoville-event-feed/events.json";
 
 const EVENTS_PER_PAGE = 10;
 const PAGE_DURATION = 20000;
