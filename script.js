@@ -1,8 +1,8 @@
 console.log("Romeoville Events script is running...");
 
-const proxyUrl = "https://bucolic-madeleine-a56597.netlify.app/https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
-const feedUrl = "https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
-const fullUrl = proxyUrl + feedUrl;
+const proxyUrl = "https://bucolic-madeleine-a56597.netlify.app";
+const targetUrl = "https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
+const rssUrl = `${proxyUrl}/${targetUrl}`;
 
 async function fetchAndDisplayEvents() {
   try {
