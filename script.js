@@ -1,79 +1,117 @@
 console.log("Romeoville Events script is running...");
 
-const proxyUrl = "https://amazing-sopapillas-b6d3e4.netlify.app/.netlify/functions/cors-proxy/";
-const feedUrl = "https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
-const fullUrl = proxyUrl + feedUrl;
+const FEED_URL = 'https://your-proxy-url/https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml';
+const EVENTS_PER_PAGE = 10;
+let currentPage = 0;
+let pages = [];
 
-fetch(fullUrl)
-  .then(response => response.text())
-  .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
-  .then(data => {
-    const items = data.querySelectorAll("item");
-    const events = [];
+function parseDateText(text) {
+  let matchSingle = text.match(/Event date:\s*([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+  let matchRange = text.match(/Event dates:\s*([A-Za-z]+\s+\d{1,2},\s+\d{4})\s*-\s*([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
 
-    items.forEach((item, index) => {
-      const title = item.querySelector("title")?.textContent.trim() || "No Title";
-      const link = item.querySelector("link")?.textContent.trim() || "#";
-      const description = item.querySelector("description")?.textContent || "";
-      const summary = description
-        .replace(/<[^>]+>/g, "") // Remove HTML tags
-        .replace(/\s+/g, " ")    // Normalize whitespace
-        .trim();
+  if (matchSingle) {
+    return {
+      startDate: new Date(matchSingle[1]),
+      endDate: new Date(matchSingle[1]),
+      dateText: matchSingle[1]
+    };
+  } else if (matchRange) {
+    return {
+      startDate: new Date(matchRange[1]),
+      endDate: new Date(matchRange[2]),
+      dateText: `${matchRange[1]} - ${matchRange[2]}`
+    };
+  } else {
+    return {
+      startDate: null,
+      endDate: null,
+      dateText: 'Date TBD'
+    };
+  }
+}
 
-      console.log(`SUMMARY ${index + 1} : ${summary}`);
+function parseEventTime(summary) {
+  let match = summary.match(/Event Time:\s*(.*?)</i);
+  return match ? match[1].trim() : 'Time TBD';
+}
 
-      const dateMatch = summary.match(/Event date(?:s)?: ([A-Za-z]+\s\d{1,2},\s\d{4})(?:\s*-\s*([A-Za-z]+\s\d{1,2},\s\d{4}))?/i);
-      const timeMatch = summary.match(/Event Time:\s*([0-9:APM\s-]+)/i);
-      const locationMatch = summary.match(/Location:\s*(.*?)\s*(?:[A-Z][a-z]{2,8}, IL \d{5})?/i);
+function parseLocation(summary) {
+  let match = summary.match(/Location:\s*<\/strong>\s*(.*?)<br>/i);
+  if (match) return match[1].replace(/<br>/g, '').trim();
 
-      let startDate = null, endDate = null;
-      if (dateMatch) {
-        startDate = new Date(dateMatch[1]);
-        endDate = dateMatch[2] ? new Date(dateMatch[2]) : startDate;
-      }
+  // fallback: remove other tags
+  let fallback = summary.match(/Location:.*?<br>(.*?)<\/p>/i);
+  return fallback ? fallback[1].replace(/<br>/g, '').trim() : 'Location TBD';
+}
 
-      const event = {
-        title,
-        dateText: dateMatch ? dateMatch[0] : "Date TBD",
-        startDate,
-        endDate,
-        time: timeMatch ? timeMatch[1].trim() : "Time TBD",
-        location: locationMatch ? locationMatch[1].trim() : "Location TBD",
-        link,
-      };
+function createEventHTML(event) {
+  return `
+    <div class="event">
+      <div class="event-title">${event.title}</div>
+      <div class="event-date">${event.dateText}</div>
+      <div class="event-time">${event.time}</div>
+      <div class="event-location">${event.location}</div>
+    </div>
+  `;
+}
 
-      console.log(`Parsed event #${index + 1}:`, event);
-      events.push(event);
+async function fetchAndDisplayEvents() {
+  try {
+    const res = await fetch(FEED_URL);
+    const text = await res.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, "application/xml");
+    const items = Array.from(xml.querySelectorAll("item"));
+
+    const now = new Date();
+    const events = items.map((item, index) => {
+      const title = item.querySelector("title")?.textContent || "No title";
+      const summary = item.querySelector("description")?.textContent || "";
+
+      const { startDate, endDate, dateText } = parseDateText(summary);
+      const time = parseEventTime(summary);
+      const location = parseLocation(summary);
+
+      const link = item.querySelector("link")?.textContent;
+
+      const eventObj = { title, summary, startDate, endDate, dateText, time, location, link };
+      return eventObj;
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // ✅ Important: Normalize to midnight
+    console.log("Raw parsed events:", events);
 
-    const filteredEvents = events.filter(event => {
-      return event.startDate && event.endDate && event.endDate >= today;
+    const upcoming = events.filter(event => {
+      return event.startDate instanceof Date && !isNaN(event.startDate) && event.endDate >= now;
     });
 
-    const container = document.getElementById("events");
-    if (filteredEvents.length === 0) {
-      container.innerHTML = "<p>No upcoming events found.</p>";
+    console.log("Filtered upcoming events:", upcoming);
+
+    if (upcoming.length === 0) {
+      document.getElementById("events").innerHTML = "<div class='event-title'>No upcoming events found.</div>";
       return;
     }
 
-    filteredEvents.forEach(event => {
-      const eventElement = document.createElement("div");
-      eventElement.classList.add("event");
+    // Group into pages
+    pages = [];
+    for (let i = 0; i < upcoming.length; i += EVENTS_PER_PAGE) {
+      pages.push(upcoming.slice(i, i + EVENTS_PER_PAGE));
+    }
 
-      eventElement.innerHTML = `
-        <h3><a href="${event.link}" target="_blank">${event.title}</a></h3>
-        <p><strong>Date:</strong> ${event.dateText}</p>
-        <p><strong>Time:</strong> ${event.time}</p>
-        <p><strong>Location:</strong> ${event.location}</p>
-      `;
+    showPage(0);
+    setInterval(() => {
+      currentPage = (currentPage + 1) % pages.length;
+      showPage(currentPage);
+    }, 20000);
 
-      container.appendChild(eventElement);
-    });
-  })
-  .catch(error => {
-    console.error("Error loading events:", error);
-    document.getElementById("events").innerHTML = "<p>Failed to load events.</p>";
-  });
+  } catch (err) {
+    console.error("Error loading events:", err);
+    document.getElementById("events").innerHTML = "<div class='event-title'>Failed to load events.</div>";
+  }
+}
+
+function showPage(pageIndex) {
+  const page = pages[pageIndex];
+  document.getElementById("events").innerHTML = page.map(createEventHTML).join("");
+}
+
+fetchAndDisplayEvents();
