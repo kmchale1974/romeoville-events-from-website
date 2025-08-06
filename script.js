@@ -1,4 +1,3 @@
-
 const RSS_URL = "https://corsproxy.io/?" + encodeURIComponent("https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml");
 const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour
 const PAGE_DURATION = 20000; // 20 seconds
@@ -7,7 +6,6 @@ let currentPageIndex = 0;
 let pages = [];
 
 async function fetchEvents() {
-  console.log("SUMMARY:", summary);
   try {
     const response = await fetch(RSS_URL);
     if (!response.ok) throw new Error("Network response was not ok");
@@ -20,15 +18,18 @@ async function fetchEvents() {
       const title = item.querySelector("title")?.textContent.trim() || "Untitled Event";
       const rawSummary = item.querySelector("summary")?.textContent || item.querySelector("description")?.textContent || "";
 
-      // Decode HTML entities in summary
+      // Decode HTML from the summary
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = rawSummary;
       const summary = tempDiv.innerText;
+
+      // Log the raw decoded summary for first 3 items
       if (index < 3) console.log("SUMMARY", index + 1, ":", summary);
 
-      const dateMatch = summary.match(/Event date(?:s)?:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})(?:\s*-\s*([A-Za-z]+\s+\d{1,2},\s*\d{4}))?/i);
-      const timeMatch = summary.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
-      const locationMatch = summary.match(/Location:\s*(.*?)\n/i);
+      // Try to extract event date range
+      const dateMatch = summary.match(/Event date(?:s)?:\\s*([A-Za-z]+\\s+\\d{1,2},\\s*\\d{4})(?:\\s*-\\s*([A-Za-z]+\\s+\\d{1,2},\\s*\\d{4}))?/i);
+      const timeMatch = summary.match(/(\\d{1,2}:\\d{2}\\s*[AP]M)/i);
+      const locationMatch = summary.match(/Location:\\s*(.*?)\\n/i);
 
       let startDate = dateMatch ? new Date(dateMatch[1]) : null;
       let endDate = dateMatch?.[2] ? new Date(dateMatch[2]) : startDate;
@@ -44,10 +45,10 @@ async function fetchEvents() {
         endDate,
         dateText: displayDate,
         time: timeMatch?.[1] || "Time TBD",
-        location: locationMatch?.[1]?.replace(/,?\s*Romeoville.*$/i, "").trim() || "Location TBD"
+        location: locationMatch?.[1]?.replace(/,?\\s*Romeoville.*$/i, "").trim() || "Location TBD"
       };
 
-      console.log(`Parsed event #${index + 1}:`, event);
+      console.log("Parsed event #" + (index + 1) + ":", event);
       return event;
     });
 
@@ -112,6 +113,7 @@ function scheduleMidnightReload() {
   }, msToMidnight);
 }
 
+console.log("Romeoville Events script is running...");
 fetchEvents();
 setInterval(fetchEvents, REFRESH_INTERVAL);
 scheduleMidnightReload();
