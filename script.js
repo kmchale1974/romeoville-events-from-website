@@ -1,6 +1,6 @@
 console.log("Romeoville Events script is running...");
 
-const proxyUrl = "https://bucolic-madeleine-a56597.netlify.app";
+const proxyUrl = "https://bucolic-madeleine-a56597.netlify.app/.netlify/functions/cors-proxy";
 const targetUrl = "https://www.romeoville.org/RSSFeed.aspx?ModID=58&CID=All-calendar.xml";
 const fullUrl = `${proxyUrl}/${targetUrl}`;
 
