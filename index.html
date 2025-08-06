@@ -11,6 +11,13 @@
     Loading events...
   </div>
 
-  <script src="script.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const script = document.createElement("script");
+      script.src = "script.js";
+      document.body.appendChild(script);
+    });
+  </script>
 </body>
+
 </html>
