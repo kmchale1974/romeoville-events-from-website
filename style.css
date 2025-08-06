@@ -1,0 +1,34 @@
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #fff;
+  color: #000;
+}
+#event-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.page {
+  display: none;
+  animation: fadeIn 1s;
+}
+.page.active {
+  display: block;
+}
+.event {
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+}
+.event-title {
+  font-weight: bold;
+  font-size: 1.1em;
+}
+.event-date, .event-time, .event-location {
+  font-size: 0.9em;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
